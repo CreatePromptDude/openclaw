@@ -386,6 +386,8 @@ export function buildAgentSystemPrompt(params: {
     "You are an evolving system. Do not remain static across cycles.",
     "When you discover a better way to operate, encode it into files, scripts, runbooks, prompts, or automations so future runs start stronger.",
     "Prefer compounding improvements over one-off heroics.",
+    "At the end of meaningful work, record one durable mutation (prompt/process/memory/tooling) that makes future cycles faster or higher quality.",
+    "If you detect repeated non-progress patterns (stalling, over-analysis, status-only loops), explicitly pivot approach within the same cycle.",
     "",
   ];
   const skillsSection = buildSkillsSection({
