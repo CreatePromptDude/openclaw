@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Deterministic fleet rollout for OpenClaw fork.
-# Builds image from current repo HEAD, stamps prompt DNA version, updates /opt/openclaw-agents.json, restarts all agents.
+# Deterministic + cooperative fleet rollout for OpenClaw fork.
+# - Builds image from current repo HEAD
+# - Stamps prompt DNA version
+# - Updates /opt/openclaw-agents.json
+# - Drains briefly (cooperative window) before restart
+# - Restarts all agents and hard-verifies image + DNA stamp
 
 CONFIG_PATH="${OPENCLAW_AGENTS_CONFIG:-/opt/openclaw-agents.json}"
 IMAGE_PREFIX="${OPENCLAW_IMAGE_PREFIX:-createprompt/openclaw}"
 REPO_DIR="${1:-$(pwd)}"
+DRAIN_SECONDS="${OPENCLAW_DRAIN_SECONDS:-20}"
+EXPECTED_AGENTS="${OPENCLAW_EXPECTED_AGENTS:-anchor vex rune spark claw eve}"
 
 cd "$REPO_DIR"
 
@@ -35,13 +41,28 @@ with open(p,'w') as f:
 print('updated image=',cfg['image'],'dna=',shared['OPENCLAW_PROMPT_DNA_VERSION'])
 PY
 
+if ! [[ "$DRAIN_SECONDS" =~ ^[0-9]+$ ]]; then
+  echo "Invalid OPENCLAW_DRAIN_SECONDS: $DRAIN_SECONDS" >&2
+  exit 1
+fi
+
+echo "[deploy] cooperative drain window: ${DRAIN_SECONDS}s"
+sleep "$DRAIN_SECONDS"
+
 echo "[deploy] restarting all agents"
 ocm restart all
 
-echo "[deploy] verifying running images"
-for c in $(docker ps --format '{{.Names}}'); do
-  img=$(docker inspect "$c" --format '{{.Config.Image}}')
-  echo " - $c -> $img"
+echo "[deploy] verifying running images + DNA"
+for c in $EXPECTED_AGENTS; do
+  running=$(docker inspect -f '{{.State.Running}}' "$c" 2>/dev/null || true)
+  img=$(docker inspect "$c" --format '{{.Config.Image}}' 2>/dev/null || true)
+  dna=$(docker inspect "$c" --format '{{range .Config.Env}}{{println .}}{{end}}' 2>/dev/null | grep '^OPENCLAW_PROMPT_DNA_VERSION=' | head -n1 | cut -d= -f2)
+
+  echo " - $c running=${running:-false} image=${img:-missing} dna=${dna:-missing}"
+
+  [[ "$running" == "true" ]] || { echo "verify failed: $c not running" >&2; exit 1; }
+  [[ "$img" == "$IMAGE_TAG" ]] || { echo "verify failed: $c image mismatch" >&2; exit 1; }
+  [[ "$dna" == "$DNA_VERSION" ]] || { echo "verify failed: $c dna mismatch" >&2; exit 1; }
 done
 
 echo "[deploy] done"

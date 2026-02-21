@@ -61,7 +61,7 @@ jobs:
             "${VPS_USER}@${VPS_HOST}" \
             "bash -lc 'cd ~/prompt/createprompt && bash scripts/deploy-fork-fleet.sh'"
 
-      - name: Verify rollout stamp on VPS
+      - name: Verify rollout stamp on VPS (strict)
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
@@ -72,4 +72,4 @@ jobs:
           PORT="${VPS_PORT:-22}"
           ssh -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
             "${VPS_USER}@${VPS_HOST}" \
-            "bash -lc 'grep -n \"OPENCLAW_PROMPT_DNA_VERSION\" /opt/openclaw-agents.json || true; ocm status || true'"
+            "bash -lc 'grep -n \"OPENCLAW_PROMPT_DNA_VERSION\" /opt/openclaw-agents.json; ocm status | egrep \"^(anchor|vex|rune|spark|claw|eve)\\\\b\"'"
