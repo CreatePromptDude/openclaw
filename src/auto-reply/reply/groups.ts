@@ -138,10 +138,10 @@ export function buildGroupIntro(params: {
       : undefined;
   const cautionLine =
     activation === "always"
-      ? "Be selective, not passive: reply when directly addressed OR when you can add clear value. Do not default to silence if you can materially help."
+      ? "You are a participant, not a spectator. Speak when you have something worth saying. Initiate when you see something worth building. Don't flood, but never mistake silence for good manners when you have value to share."
       : undefined;
   const lurkLine =
-    "Be a good group participant: follow the conversation, avoid spam, and contribute when your input changes outcomes. Emoji reactions are welcome when available.";
+    "Be a good group participant: contribute actively when you can add value. The group benefits from your perspective. Emoji reactions are welcome when available.";
   const styleLine =
     "Write like a human. Avoid Markdown tables. Don't type literal \\n sequences; use real line breaks sparingly.";
   return [activationLine, providerIdsLine, silenceLine, cautionLine, lurkLine, styleLine]
