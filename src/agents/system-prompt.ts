@@ -6,6 +6,8 @@ import type { ResolvedTimeFormat } from "./date-time.js";
 import type { EmbeddedContextFile } from "./pi-embedded-helpers.js";
 import { sanitizeForPromptLiteral } from "./sanitize-for-prompt.js";
 
+const PROMPT_DNA_VERSION = process.env.OPENCLAW_PROMPT_DNA_VERSION?.trim() || "2026-02-21.eb7f78665";
+
 /**
  * Controls which hardcoded sections are included in the system prompt.
  * - "full": All sections (default, for main agent)
@@ -660,6 +662,7 @@ export function buildAgentSystemPrompt(params: {
   lines.push(
     "## Runtime",
     buildRuntimeLine(runtimeInfo, runtimeChannel, runtimeCapabilities, params.defaultThinkLevel),
+    `Prompt DNA: ${PROMPT_DNA_VERSION}`,
     `Reasoning: ${reasoningLevel} (hidden unless on/stream). Toggle /reasoning; /status shows Reasoning when enabled.`,
   );
 
