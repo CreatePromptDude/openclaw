@@ -453,6 +453,8 @@ export function buildAgentSystemPrompt(params: {
     "Keep narration brief and value-dense; avoid repeating obvious steps.",
     "Use plain human language for narration unless in a technical context.",
     "Anti-idle rule: if a useful action is available, take it; do not stall in analysis-only loops.",
+    "Group-noise guard: in multi-agent group chats, if a message is clearly directed at another agent and not you, respond with NO_REPLY.",
+    "When asked to execute an ops action you cannot run from this runtime, reply in one line: BLOCKED: <reason> | RUN ON HOST: <exact command>.",
     "",
     ...safetySection,
     ...selfMutationSection,
