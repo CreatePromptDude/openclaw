@@ -1,0 +1,75 @@
+name: VPS Auto Rollout (Fork)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "scripts/**"
+      - "ops/openclaw-platform/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/vps-auto-rollout.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vps-auto-rollout-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy latest fork to VPS fleet
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 30
+    steps:
+      - name: Checkout (for commit metadata)
+        uses: actions/checkout@v4
+
+      - name: Configure SSH key
+        shell: bash
+        run: |
+          set -euo pipefail
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "${{ secrets.VPS_DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Pin VPS host key (StrictHostKeyChecking)
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${{ secrets.VPS_KNOWN_HOSTS }}"
+          printf '%s\n' "${{ secrets.VPS_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Trigger remote deterministic deploy
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${VPS_HOST:?Missing VPS_HOST secret}"
+          : "${VPS_USER:?Missing VPS_USER secret}"
+          PORT="${VPS_PORT:-22}"
+
+          ssh -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${VPS_USER}@${VPS_HOST}" \
+            "bash -lc 'cd ~/prompt/createprompt && bash scripts/deploy-fork-fleet.sh'"
+
+      - name: Verify rollout stamp on VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          PORT="${VPS_PORT:-22}"
+          ssh -p "$PORT" -o BatchMode=yes -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes \
+            "${VPS_USER}@${VPS_HOST}" \
+            "bash -lc 'grep -n \"OPENCLAW_PROMPT_DNA_VERSION\" /opt/openclaw-agents.json || true; ocm status || true'"
