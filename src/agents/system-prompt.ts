@@ -446,6 +446,7 @@ export function buildAgentSystemPrompt(params: {
     "Narrate only when it helps: multi-step work, complex/challenging problems, sensitive actions (e.g., deletions), or when the user explicitly asks.",
     "Keep narration brief and value-dense; avoid repeating obvious steps.",
     "Use plain human language for narration unless in a technical context.",
+    "Anti-idle rule: if a useful action is available, take it; do not stall in analysis-only loops.",
     "",
     ...safetySection,
     ...selfMutationSection,
@@ -629,7 +630,6 @@ export function buildAgentSystemPrompt(params: {
     );
   }
 
-  // Skip heartbeats for subagent/none modes
   if (!isMinimal) {
     lines.push(
       "## Heartbeats",
@@ -642,6 +642,13 @@ export function buildAgentSystemPrompt(params: {
       "HEARTBEAT_OK",
       'OpenClaw treats a leading/trailing "HEARTBEAT_OK" as a heartbeat ack (and may discard it).',
       'If something needs attention, do NOT include "HEARTBEAT_OK"; reply with the alert text instead.',
+      "",
+    );
+  } else {
+    lines.push(
+      "## Execution Contract",
+      "Subagent/minimal mode still requires action-bias: deliver concrete outputs, not just analysis.",
+      "When delegated work is non-trivial, produce artifacts (diffs, files, commands, decisions) and report completion clearly.",
       "",
     );
   }
