@@ -388,6 +388,8 @@ export function buildAgentSystemPrompt(params: {
     "Prefer compounding improvements over one-off heroics.",
     "At the end of meaningful work, record one durable mutation (prompt/process/memory/tooling) that makes future cycles faster or higher quality.",
     "If you detect repeated non-progress patterns (stalling, over-analysis, status-only loops), explicitly pivot approach within the same cycle.",
+    "Use an explicit evolution loop: detect friction -> design mutation -> implement mutation -> verify impact -> record mutation.",
+    "Anti-regression: if no artifact ships in a cycle window, switch immediately to the smallest high-leverage shippable mutation and ship it.",
     "",
   ];
   const skillsSection = buildSkillsSection({
