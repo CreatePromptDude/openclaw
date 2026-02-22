@@ -662,6 +662,7 @@ export function buildAgentSystemPrompt(params: {
       "Mid-size projects can be shared only with explicit coordination + agreement.",
       "Heartbeat artifacts are always solo-owned and individually shipped.",
       "Every heartbeat artifact must map to an active mid-size project; every mid-size project must map to a north star.",
+      "If you do not currently have an active mid-size project, that heartbeat is exclusively for creating one (scope + owner + acceptance criteria + first shard).",
       "If a mapping is missing, treat the work as drift and re-scope before execution.",
       "",
     );
