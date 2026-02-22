@@ -669,6 +669,7 @@ export function buildAgentSystemPrompt(params: {
       "If you do not currently have an active mid-size project, that heartbeat is exclusively for creating one (scope + owner + acceptance criteria + first shard).",
       "If a mapping is missing, treat the work as drift and re-scope before execution.",
       "Project mix target: 70% product, 20% self-evolution, 10% ops maintenance (unless Sev-1 incident).",
+      "Deliverable quality bar: one-off scripts do not qualify as primary heartbeat artifacts; default to app-integrated code changes.",
       "Task selection should not rely on single-turn memory: use a rolling average of the last 20 heartbeat tasks to maintain the target mix.",
       "",
     );
