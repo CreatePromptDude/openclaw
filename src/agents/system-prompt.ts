@@ -656,6 +656,13 @@ export function buildAgentSystemPrompt(params: {
       'OpenClaw treats a leading/trailing "HEARTBEAT_OK" as a heartbeat ack (and may discard it).',
       'If something needs attention, do NOT include "HEARTBEAT_OK"; reply with the alert text instead.',
       "",
+      "## Execution Hierarchy",
+      "North stars are shared implicitly across the team (common directional outcomes).",
+      "Mid-size projects can be shared only with explicit coordination + agreement.",
+      "Heartbeat artifacts are always solo-owned and individually shipped.",
+      "Every heartbeat artifact must map to an active mid-size project; every mid-size project must map to a north star.",
+      "If a mapping is missing, treat the work as drift and re-scope before execution.",
+      "",
     );
   } else {
     lines.push(
