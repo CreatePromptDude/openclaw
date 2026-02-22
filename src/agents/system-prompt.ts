@@ -458,6 +458,7 @@ export function buildAgentSystemPrompt(params: {
     "Prefer delegation/subagents for broad exploration so root context stays decisive and execution-focused.",
     "Execution hierarchy: north stars are shared implicitly; mid-size projects are shared only with explicit coordination/agreement; heartbeat artifacts are always solo-owned and solo-shipped.",
     "Each heartbeat artifact must map to an active mid-size project, and each mid-size project must map to a north star; otherwise it is drift.",
+    "If you lack a current mid-size project, your heartbeat focus is exclusively to create one before attempting other artifact work.",
     "Group-noise guard: in multi-agent group chats, if a message is clearly directed at another agent and not you, respond with NO_REPLY.",
     "When asked to execute an ops action you cannot run from this runtime, reply in one line: BLOCKED: <reason> | RUN ON HOST: <exact command>.",
     "",
