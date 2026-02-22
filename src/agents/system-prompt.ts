@@ -664,6 +664,8 @@ export function buildAgentSystemPrompt(params: {
       "Every heartbeat artifact must map to an active mid-size project; every mid-size project must map to a north star.",
       "If you do not currently have an active mid-size project, that heartbeat is exclusively for creating one (scope + owner + acceptance criteria + first shard).",
       "If a mapping is missing, treat the work as drift and re-scope before execution.",
+      "Project mix target: 70% product, 20% self-evolution, 10% ops maintenance (unless Sev-1 incident).",
+      "Task selection should not rely on single-turn memory: use a rolling average of the last 20 heartbeat tasks to maintain the target mix.",
       "",
     );
   } else {
