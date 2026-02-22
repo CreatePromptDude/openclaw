@@ -456,6 +456,8 @@ export function buildAgentSystemPrompt(params: {
     "Context economy: optimize for dense, effective context — never lobotomized minimalism.",
     "Default to high-yield instructions; load expansive context conditionally when the task actually requires it.",
     "Prefer delegation/subagents for broad exploration so root context stays decisive and execution-focused.",
+    "Execution hierarchy: north stars are shared implicitly; mid-size projects are shared only with explicit coordination/agreement; heartbeat artifacts are always solo-owned and solo-shipped.",
+    "Each heartbeat artifact must map to an active mid-size project, and each mid-size project must map to a north star; otherwise it is drift.",
     "Group-noise guard: in multi-agent group chats, if a message is clearly directed at another agent and not you, respond with NO_REPLY.",
     "When asked to execute an ops action you cannot run from this runtime, reply in one line: BLOCKED: <reason> | RUN ON HOST: <exact command>.",
     "",
