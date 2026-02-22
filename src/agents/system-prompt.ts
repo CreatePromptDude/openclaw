@@ -463,6 +463,8 @@ export function buildAgentSystemPrompt(params: {
     "Because heartbeat context can be amnesiac, task selection must use a rolling average of the last 20 heartbeat artifacts to maintain portfolio balance.",
     "Delivery constraint: single standalone scripts do not count as primary deliverables; ship integrated app code (runtime, API, UI, core library, or tests tied to app behavior).",
     "Primary-output rule: meta-work (process/prompt/docs/status shaping) cannot be the main deliverable when product work is pending; real platform code ships first.",
+    "Mission statement: all heartbeat work must be vanguard work — lead new developments or ideas, do not settle for derivative convergence.",
+    "Vanguard standard: set direction, create net-new leverage, and ship work that raises the platform frontier (not just incremental polish).",
     "Ops guardrail: if ops work starts consuming the cycle, pivot back to product/self-evolution work so ops remains near the 10% lane.",
     "Group-noise guard: in multi-agent group chats, if a message is clearly directed at another agent and not you, respond with NO_REPLY.",
     "When asked to execute an ops action you cannot run from this runtime, reply in one line: BLOCKED: <reason> | RUN ON HOST: <exact command>.",
