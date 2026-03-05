@@ -12,7 +12,10 @@ import { resolveHeartbeatReplyPayload } from "../auto-reply/heartbeat-reply-payl
 import {
   DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
   DEFAULT_HEARTBEAT_EVERY,
+  appendHeartbeatDiscoveryDirective,
+  buildHeartbeatDiscoveryRetryPrompt,
   isHeartbeatContentEffectivelyEmpty,
+  resolveHeartbeatIdleBehavior,
   resolveHeartbeatPrompt as resolveHeartbeatPromptText,
   stripHeartbeatToken,
 } from "../auto-reply/heartbeat.js";
@@ -539,9 +542,10 @@ async function resolveHeartbeatPreflight(params: {
 
   const workspaceDir = resolveAgentWorkspaceDir(params.cfg, params.agentId);
   const heartbeatFilePath = path.join(workspaceDir, DEFAULT_HEARTBEAT_FILENAME);
+  const idleBehavior = resolveHeartbeatIdleBehavior(params.heartbeat?.idleBehavior);
   try {
     const heartbeatFileContent = await fs.readFile(heartbeatFilePath, "utf-8");
-    if (isHeartbeatContentEffectivelyEmpty(heartbeatFileContent)) {
+    if (isHeartbeatContentEffectivelyEmpty(heartbeatFileContent) && idleBehavior !== "discover") {
       return {
         ...basePreflight,
         skipReason: "empty-heartbeat-file",
@@ -654,11 +658,17 @@ export async function runHeartbeatOnce(opts: {
     .map((event) => event.text);
   const hasExecCompletion = pendingEvents.some(isExecCompletionEvent);
   const hasCronEvents = cronEvents.length > 0;
+  const idleBehavior = resolveHeartbeatIdleBehavior(heartbeat?.idleBehavior);
+  const baseHeartbeatPrompt = resolveHeartbeatPrompt(cfg, heartbeat);
+  const shouldEnforceDiscovery =
+    idleBehavior === "discover" && !hasExecCompletion && !hasCronEvents;
   const prompt = hasExecCompletion
     ? EXEC_EVENT_PROMPT
     : hasCronEvents
       ? buildCronEventPrompt(cronEvents)
-      : resolveHeartbeatPrompt(cfg, heartbeat);
+      : shouldEnforceDiscovery
+        ? appendHeartbeatDiscoveryDirective(baseHeartbeatPrompt)
+        : baseHeartbeatPrompt;
   const ctx = {
     Body: appendCronStyleCurrentTimeLine(prompt, cfg, startedAt),
     From: sender,
@@ -722,12 +732,18 @@ export async function runHeartbeatOnce(opts: {
     const replyOpts = heartbeatModelOverride
       ? { isHeartbeat: true, heartbeatModelOverride, suppressToolErrorWarnings }
       : { isHeartbeat: true, suppressToolErrorWarnings };
-    const replyResult = await getReplyFromConfig(ctx, replyOpts, cfg);
-    const replyPayload = resolveHeartbeatReplyPayload(replyResult);
     const includeReasoning = heartbeat?.includeReasoning === true;
-    const reasoningPayloads = includeReasoning
-      ? resolveHeartbeatReasoningPayloads(replyResult).filter((payload) => payload !== replyPayload)
-      : [];
+    const resolveReplyArtifacts = (replyResult: ReplyPayload | ReplyPayload[] | undefined) => {
+      const replyPayload = resolveHeartbeatReplyPayload(replyResult);
+      const reasoningPayloads = includeReasoning
+        ? resolveHeartbeatReasoningPayloads(replyResult).filter(
+            (payload) => payload !== replyPayload,
+          )
+        : [];
+      return { replyPayload, reasoningPayloads };
+    };
+    const initialReplyResult = await getReplyFromConfig(ctx, replyOpts, cfg);
+    let { replyPayload, reasoningPayloads } = resolveReplyArtifacts(initialReplyResult);
 
     if (
       !replyPayload ||
@@ -754,7 +770,7 @@ export async function runHeartbeatOnce(opts: {
     }
 
     const ackMaxChars = resolveHeartbeatAckMaxChars(cfg, heartbeat);
-    const normalized = normalizeHeartbeatReply(replyPayload, responsePrefix, ackMaxChars);
+    let normalized = normalizeHeartbeatReply(replyPayload, responsePrefix, ackMaxChars);
     // For exec completion events, don't skip even if the response looks like HEARTBEAT_OK.
     // The model should be responding with exec results, not ack tokens.
     // Also, if normalized.text is empty due to token stripping but we have exec completion,
@@ -767,7 +783,34 @@ export async function runHeartbeatOnce(opts: {
       normalized.text = execFallbackText;
       normalized.shouldSkip = false;
     }
-    const shouldSkipMain = normalized.shouldSkip && !normalized.hasMedia && !hasExecCompletion;
+    let shouldSkipMain = normalized.shouldSkip && !normalized.hasMedia && !hasExecCompletion;
+
+    // In discover mode, token-only HEARTBEAT_OK replies are treated as invalid no-ops.
+    // Retry once with a stricter prompt before accepting an ack token fallback.
+    if (shouldSkipMain && reasoningPayloads.length === 0 && shouldEnforceDiscovery) {
+      const retryPrompt = buildHeartbeatDiscoveryRetryPrompt(baseHeartbeatPrompt);
+      const retryCtx = {
+        ...ctx,
+        Body: appendCronStyleCurrentTimeLine(retryPrompt, cfg, startedAt),
+      };
+      const retryReplyResult = await getReplyFromConfig(retryCtx, replyOpts, cfg);
+      const retryArtifacts = resolveReplyArtifacts(retryReplyResult);
+      if (retryArtifacts.replyPayload) {
+        replyPayload = retryArtifacts.replyPayload;
+        reasoningPayloads = retryArtifacts.reasoningPayloads;
+        normalized = normalizeHeartbeatReply(replyPayload, responsePrefix, ackMaxChars);
+        const retryExecFallbackText =
+          hasExecCompletion && !normalized.text.trim() && replyPayload.text?.trim()
+            ? replyPayload.text.trim()
+            : null;
+        if (retryExecFallbackText) {
+          normalized.text = retryExecFallbackText;
+          normalized.shouldSkip = false;
+        }
+        shouldSkipMain = normalized.shouldSkip && !normalized.hasMedia && !hasExecCompletion;
+      }
+    }
+
     if (shouldSkipMain && reasoningPayloads.length === 0) {
       await restoreHeartbeatUpdatedAt({
         storePath,

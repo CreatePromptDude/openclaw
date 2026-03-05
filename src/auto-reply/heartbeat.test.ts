@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  appendHeartbeatDiscoveryDirective,
+  buildHeartbeatDiscoveryRetryPrompt,
   DEFAULT_HEARTBEAT_ACK_MAX_CHARS,
   isHeartbeatContentEffectivelyEmpty,
+  resolveHeartbeatIdleBehavior,
   stripHeartbeatToken,
 } from "./heartbeat.js";
 import { HEARTBEAT_TOKEN } from "./tokens.js";
@@ -235,5 +238,39 @@ Check the server logs
 ### Subsection
 `;
     expect(isHeartbeatContentEffectivelyEmpty(content)).toBe(true);
+  });
+});
+
+describe("heartbeat idle behavior", () => {
+  it("defaults to ack behavior", () => {
+    expect(resolveHeartbeatIdleBehavior(undefined)).toBe("ack");
+    expect(resolveHeartbeatIdleBehavior("")).toBe("ack");
+    expect(resolveHeartbeatIdleBehavior("invalid")).toBe("ack");
+  });
+
+  it("accepts discover behavior", () => {
+    expect(resolveHeartbeatIdleBehavior("discover")).toBe("discover");
+    expect(resolveHeartbeatIdleBehavior(" DISCOVER ")).toBe("discover");
+  });
+});
+
+describe("heartbeat discovery prompt helpers", () => {
+  it("appends discovery directive when missing", () => {
+    const prompt = appendHeartbeatDiscoveryDirective("Read HEARTBEAT.md");
+    expect(prompt).toContain("Read HEARTBEAT.md");
+    expect(prompt).toContain("DISCOVERY MODE:");
+    expect(prompt).toContain("Idle is forbidden.");
+  });
+
+  it("does not duplicate discovery directive", () => {
+    const initial = appendHeartbeatDiscoveryDirective("Read HEARTBEAT.md");
+    const second = appendHeartbeatDiscoveryDirective(initial);
+    expect(second).toBe(initial);
+  });
+
+  it("builds retry prompt with invalid-empty guidance", () => {
+    const prompt = buildHeartbeatDiscoveryRetryPrompt("Read HEARTBEAT.md");
+    expect(prompt).toContain("DISCOVERY MODE:");
+    expect(prompt).toContain("previous heartbeat reply was empty or HEARTBEAT_OK");
   });
 });

@@ -21,6 +21,10 @@ export const FIELD_HELP: Record<string, string> = {
     "Suppress tool error warning payloads during heartbeat runs.",
   "agents.list[].heartbeat.suppressToolErrorWarnings":
     "Suppress tool error warning payloads during heartbeat runs.",
+  "agents.defaults.heartbeat.idleBehavior":
+    'Heartbeat idle behavior: "ack" allows HEARTBEAT_OK no-op acknowledgments, "discover" requires proactive opportunity creation.',
+  "agents.list[].heartbeat.idleBehavior":
+    'Heartbeat idle behavior: "ack" allows HEARTBEAT_OK no-op acknowledgments, "discover" requires proactive opportunity creation.',
   "discovery.mdns.mode":
     'mDNS broadcast mode ("minimal" default, "full" includes cliPath/sshPort, "off" disables mDNS).',
   "gateway.auth.token":

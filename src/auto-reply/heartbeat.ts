@@ -5,6 +5,16 @@ import { HEARTBEAT_TOKEN } from "./tokens.js";
 // Keep it tight and avoid encouraging the model to invent/rehash "open loops" from prior chat context.
 export const HEARTBEAT_PROMPT =
   "Read HEARTBEAT.md if it exists (workspace context). Follow it strictly. Do not infer or repeat old tasks from prior chats. If nothing needs attention, reply HEARTBEAT_OK.";
+export type HeartbeatIdleBehavior = "ack" | "discover";
+export const HEARTBEAT_IDLE_BEHAVIOR_DEFAULT: HeartbeatIdleBehavior = "ack";
+const HEARTBEAT_DISCOVERY_APPENDIX = [
+  "DISCOVERY MODE:",
+  "- Idle is forbidden.",
+  "- If no queued work or urgent alerts exist, proactively discover one high-impact improvement in the current codebase and start it now.",
+  "- Return a concrete action/update, not HEARTBEAT_OK.",
+].join("\n");
+const HEARTBEAT_DISCOVERY_RETRY_APPENDIX =
+  "The previous heartbeat reply was empty or HEARTBEAT_OK, which is invalid in discovery mode. Choose one concrete high-impact task and start it now.";
 export const DEFAULT_HEARTBEAT_EVERY = "30m";
 export const DEFAULT_HEARTBEAT_ACK_MAX_CHARS = 300;
 
@@ -55,6 +65,31 @@ export function isHeartbeatContentEffectivelyEmpty(content: string | undefined |
 export function resolveHeartbeatPrompt(raw?: string): string {
   const trimmed = typeof raw === "string" ? raw.trim() : "";
   return trimmed || HEARTBEAT_PROMPT;
+}
+
+export function resolveHeartbeatIdleBehavior(raw?: string): HeartbeatIdleBehavior {
+  const normalized = typeof raw === "string" ? raw.trim().toLowerCase() : "";
+  if (normalized === "discover") {
+    return "discover";
+  }
+  return HEARTBEAT_IDLE_BEHAVIOR_DEFAULT;
+}
+
+export function appendHeartbeatDiscoveryDirective(prompt: string): string {
+  const trimmed = prompt.trim();
+  if (!trimmed) {
+    return HEARTBEAT_DISCOVERY_APPENDIX;
+  }
+  if (trimmed.includes("DISCOVERY MODE:")) {
+    return trimmed;
+  }
+  return `${trimmed}\n\n${HEARTBEAT_DISCOVERY_APPENDIX}`;
+}
+
+export function buildHeartbeatDiscoveryRetryPrompt(prompt: string): string {
+  return appendHeartbeatDiscoveryDirective(
+    `${prompt.trim()}\n\n${HEARTBEAT_DISCOVERY_RETRY_APPENDIX}`,
+  );
 }
 
 export type StripHeartbeatMode = "heartbeat" | "message";

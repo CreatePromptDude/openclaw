@@ -1161,6 +1161,158 @@ describe("runHeartbeatOnce", () => {
     }
   });
 
+  it("does not skip interval heartbeat in discover idleBehavior when HEARTBEAT.md is effectively empty", async () => {
+    const tmpDir = await createCaseDir("openclaw-hb");
+    const storePath = path.join(tmpDir, "sessions.json");
+    const workspaceDir = path.join(tmpDir, "workspace");
+    const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
+    try {
+      await fs.mkdir(workspaceDir, { recursive: true });
+
+      await fs.writeFile(
+        path.join(workspaceDir, "HEARTBEAT.md"),
+        "# HEARTBEAT.md\n\n## Tasks\n\n",
+        "utf-8",
+      );
+
+      const cfg: OpenClawConfig = {
+        agents: {
+          defaults: {
+            workspace: workspaceDir,
+            heartbeat: {
+              every: "5m",
+              target: "whatsapp",
+              idleBehavior: "discover",
+            },
+          },
+        },
+        channels: { whatsapp: { allowFrom: ["*"] } },
+        session: { store: storePath },
+      };
+      const sessionKey = resolveMainSessionKey(cfg);
+
+      await fs.writeFile(
+        storePath,
+        JSON.stringify(
+          {
+            [sessionKey]: {
+              sessionId: "sid",
+              updatedAt: Date.now(),
+              lastChannel: "whatsapp",
+              lastTo: "+1555",
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      replySpy.mockResolvedValue({
+        text: "Started implementing a high-impact reliability improvement.",
+      });
+      const sendWhatsApp = vi.fn().mockResolvedValue({
+        messageId: "m1",
+        toJid: "jid",
+      });
+
+      const res = await runHeartbeatOnce({
+        cfg,
+        deps: {
+          sendWhatsApp,
+          getQueueSize: () => 0,
+          nowMs: () => 0,
+          webAuthExists: async () => true,
+          hasActiveWebListener: () => true,
+        },
+      });
+
+      expect(res.status).toBe("ran");
+      expect(replySpy).toHaveBeenCalledTimes(1);
+      const calledCtx = replySpy.mock.calls[0]?.[0];
+      expect(calledCtx?.Body).toContain("DISCOVERY MODE:");
+      expect(sendWhatsApp).toHaveBeenCalledWith(
+        "+1555",
+        "Started implementing a high-impact reliability improvement.",
+        expect.any(Object),
+      );
+    } finally {
+      replySpy.mockRestore();
+    }
+  });
+
+  it("retries once in discover idleBehavior when the first reply is HEARTBEAT_OK", async () => {
+    const tmpDir = await createCaseDir("openclaw-hb");
+    const storePath = path.join(tmpDir, "sessions.json");
+    const workspaceDir = path.join(tmpDir, "workspace");
+    const replySpy = vi.spyOn(replyModule, "getReplyFromConfig");
+    try {
+      await fs.mkdir(workspaceDir, { recursive: true });
+
+      const cfg: OpenClawConfig = {
+        agents: {
+          defaults: {
+            workspace: workspaceDir,
+            heartbeat: {
+              every: "5m",
+              target: "whatsapp",
+              idleBehavior: "discover",
+            },
+          },
+        },
+        channels: { whatsapp: { allowFrom: ["*"] } },
+        session: { store: storePath },
+      };
+      const sessionKey = resolveMainSessionKey(cfg);
+
+      await fs.writeFile(
+        storePath,
+        JSON.stringify(
+          {
+            [sessionKey]: {
+              sessionId: "sid",
+              updatedAt: Date.now(),
+              lastChannel: "whatsapp",
+              lastTo: "+1555",
+            },
+          },
+          null,
+          2,
+        ),
+      );
+
+      replySpy
+        .mockResolvedValueOnce({ text: "HEARTBEAT_OK" })
+        .mockResolvedValueOnce({ text: "Started by fixing stale heartbeat queue behavior." });
+      const sendWhatsApp = vi.fn().mockResolvedValue({
+        messageId: "m1",
+        toJid: "jid",
+      });
+
+      const res = await runHeartbeatOnce({
+        cfg,
+        deps: {
+          sendWhatsApp,
+          getQueueSize: () => 0,
+          nowMs: () => 0,
+          webAuthExists: async () => true,
+          hasActiveWebListener: () => true,
+        },
+      });
+
+      expect(res.status).toBe("ran");
+      expect(replySpy).toHaveBeenCalledTimes(2);
+      const retryCtx = replySpy.mock.calls[1]?.[0];
+      expect(retryCtx?.Body).toContain("previous heartbeat reply was empty or HEARTBEAT_OK");
+      expect(sendWhatsApp).toHaveBeenCalledWith(
+        "+1555",
+        "Started by fixing stale heartbeat queue behavior.",
+        expect.any(Object),
+      );
+    } finally {
+      replySpy.mockRestore();
+    }
+  });
+
   it("does not skip wake-triggered heartbeat when HEARTBEAT.md is effectively empty", async () => {
     const tmpDir = await createCaseDir("openclaw-hb");
     const storePath = path.join(tmpDir, "sessions.json");
